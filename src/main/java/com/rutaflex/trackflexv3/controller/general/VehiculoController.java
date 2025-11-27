@@ -28,6 +28,7 @@ import static java.util.Objects.isNull;
 @RestController
 @Slf4j
 @RequestMapping("/vehiculos")
+@PreAuthorize("hasRole('GERENTE_LOGISTICO')")
 public class VehiculoController {
     // Agrega esta dependencia
     private final VehiculoExportService vehiculoExportService;

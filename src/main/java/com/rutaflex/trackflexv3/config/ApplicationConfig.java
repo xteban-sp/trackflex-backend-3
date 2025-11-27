@@ -43,10 +43,12 @@ public class ApplicationConfig {
     }
     public static void main(String[] args) {
         BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
-        String password = "456";
+        String password = "789";
         String encoded = encoder.encode(password);
         System.out.println("BCrypt: " + encoded);
 
         System.out.println(Encoders.BASE64URL.encode(Keys.secretKeyFor(SignatureAlgorithm.HS256).getEncoded()));
     }
+
+
 }
