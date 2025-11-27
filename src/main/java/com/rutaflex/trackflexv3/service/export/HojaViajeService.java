@@ -16,8 +16,7 @@ public class HojaViajeService {
     private final ServicioService servicioService;
 
     public ByteArrayInputStream exportarHojaViaje(List<Long> servicioIds) throws IOException, Exception {
-        // Obtener servicios por IDs
-        // (Asumiendo que tienes un método en ServicioService para esto)
+
         List<ServicioDTO> servicios = servicioIds.stream()
                 .map(id -> servicioService.findById(id).orElse(null))
                 .filter(s -> s != null)
