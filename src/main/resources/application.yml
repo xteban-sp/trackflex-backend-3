@@ -1,0 +1,17 @@
+springdoc:
+  swagger-ui:
+    # Ruta donde se sirve Swagger UI. Por defecto es /swagger-ui.html
+    path: /swagger-ui.html
+    # Permite inhabilitar la interfaz si es necesario
+    enabled: true
+  api-docs:
+    # Ruta para el archivo OpenAPI JSON/YAML. Por defecto es /v3/api-docs
+    path: /v3/api-docs
+  # Configuración general de la API
+  info:
+    title: TrackFlex - Sistema de Gestión Logística API
+    version: 1.0.0
+    description: Documentación de la API para el sistema de gestión de Rutaflex.
+    contact:
+      name: Equipo de Desarrollo Rutaflex
+      email: dev@rutaflex.com
