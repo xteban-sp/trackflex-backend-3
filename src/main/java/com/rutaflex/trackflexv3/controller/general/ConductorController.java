@@ -20,6 +20,10 @@ import static java.util.Objects.isNull;
 @RestController
 @Slf4j
 @RequestMapping("/conductores")
+@CrossOrigin(
+        origins = "http://localhost:4200",
+        allowCredentials = "true"
+)
 public class ConductorController {
 
     private final ConductorService conductorService;

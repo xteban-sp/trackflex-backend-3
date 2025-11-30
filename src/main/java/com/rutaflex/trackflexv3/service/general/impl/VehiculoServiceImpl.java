@@ -10,6 +10,7 @@ import lombok.RequiredArgsConstructor;
 import org.hibernate.service.spi.ServiceException;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -31,7 +32,14 @@ public class VehiculoServiceImpl implements VehiculoService {
             throw new ServiceException("Error al listar vehículos activos", e);
         }
     }
-
+    @Override
+    public List<VehiculoDTO> findByIds(List<Long> ids) {
+        // Asegura que solo se devuelvan vehículos activos que están en la lista de IDs
+        List<Vehiculo> vehiculos = repository.findByIdInAndEstado(ids, "A");
+        return vehiculos.stream()
+                .map(mapper::toDTO)
+                .collect(Collectors.toList());
+    }
     @Override
     public Optional<VehiculoDTO> findById(Long id) throws ServiceException {
         try {
@@ -107,5 +115,12 @@ public class VehiculoServiceImpl implements VehiculoService {
         } catch (Exception e) {
             throw new ServiceException("Error al dar de baja el vehículo", e);
         }
+    }
+    @Override
+    public List<VehiculoDTO> findDisponibles(LocalDate fecha, Long nivelId) {
+        List<Vehiculo> vehiculos = repository.findDisponibles(fecha, nivelId);
+        return vehiculos.stream()
+                .map(mapper::toDTO) // o como conviertas en tu proyecto
+                .collect(Collectors.toList());
     }
 }

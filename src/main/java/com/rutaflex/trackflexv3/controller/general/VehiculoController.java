@@ -2,25 +2,25 @@ package com.rutaflex.trackflexv3.controller.general;
 
 import com.rutaflex.trackflexv3.controller.error.BusinessException;
 import com.rutaflex.trackflexv3.controller.error.ResourceNotFoundException;
+import com.rutaflex.trackflexv3.dto.EnvioVehiculosSeleccionadosDTO;
 import com.rutaflex.trackflexv3.dto.VehiculoDTO;
-import com.rutaflex.trackflexv3.service.export.VehiculoExportService;
+import com.rutaflex.trackflexv3.service.export.EmailService;
+import com.rutaflex.trackflexv3.service.export.ExportService;
 import com.rutaflex.trackflexv3.service.general.service.VehiculoService;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.core.io.ByteArrayResource;
-import org.springframework.core.io.Resource;
 import org.springframework.format.annotation.DateTimeFormat;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
-import java.io.ByteArrayInputStream;
+import java.io.IOException;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 
 import static java.util.Objects.isNull;
 
@@ -33,9 +33,49 @@ import static java.util.Objects.isNull;
         allowCredentials = "true"
 )
 public class VehiculoController {
-    // Agrega esta dependencia
-    private final VehiculoExportService vehiculoExportService;
+
     private final VehiculoService vehiculoService;
+    private final ExportService exportService;
+    private final EmailService emailService;
+
+    @PreAuthorize("hasAuthority('GET_VEHICULOS_DISPONIBLES')")
+    @GetMapping("/disponibles")
+    public ResponseEntity<List<VehiculoDTO>> getDisponibles(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fecha,
+            @RequestParam(required = false) Long nivelId) {
+        return ResponseEntity.ok(vehiculoService.findDisponibles(fecha, nivelId));
+    }
+
+    @PreAuthorize("hasAuthority('EXPORT_VEHICULOS_DISPONIBLES')")
+    @PostMapping("/disponibles/exportar")
+    public void exportarDisponibles(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fecha,
+            @RequestParam(required = false) Long nivelId,
+            @RequestParam String formato,
+            HttpServletResponse response) throws IOException {
+        List<VehiculoDTO> vehiculos = vehiculoService.findDisponibles(fecha, nivelId);
+        exportService.exportVehiculosDisponibles(vehiculos, formato, response);
+    }
+
+    @PreAuthorize("hasAuthority('EXPORT_VEHICULOS_DISPONIBLES')")
+    @PostMapping("/disponibles/enviar-correo")
+    public ResponseEntity<String> enviarPorCorreo(
+            @RequestBody EnvioVehiculosSeleccionadosDTO envioDto, // <-- Nuevo DTO
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fecha,
+            @RequestParam(required = false) Long nivelId) {
+        List<VehiculoDTO> vehiculos;
+
+        // Si se enviaron IDs específicos, úsalos. Si no, usa todos los disponibles.
+        if (envioDto.getVehiculoIds() != null && !envioDto.getVehiculoIds().isEmpty()) {
+            vehiculos = vehiculoService.findByIds(envioDto.getVehiculoIds());
+        } else {
+            // Comportamiento anterior (por si acaso)
+            vehiculos = vehiculoService.findDisponibles(fecha, nivelId);
+        }
+
+        emailService.enviarVehiculosDisponibles(vehiculos, envioDto.getDestinatarios(), fecha);
+        return ResponseEntity.ok("Enviado");
+    }
 
     @PreAuthorize("hasAuthority('GET_ALL_VEHICULOS')")
     @GetMapping
@@ -89,42 +129,4 @@ public class VehiculoController {
         return ResponseEntity.ok("Vehículo desactivado correctamente");
     }
 
-    // RF01, RF03, RF05: Exportar lista de vehículos disponibles para una fecha
-    @PreAuthorize("hasAuthority('EXPORT_VEHICULOS_DISPONIBLES')")
-    @GetMapping("/exportar/disponibles")
-    public ResponseEntity<?> exportarVehiculosDisponibles(
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fecha) {
-        try {
-            // Lógica de disponibilidad está en MantenimientoService, pero lo exponemos aquí
-            throw new BusinessException("Endpoint de exportación requiere servicio de coordinación (pendiente)");
-        } catch (Exception e) {
-            log.error("Error al exportar vehículos disponibles", e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(e.getMessage());
-        }
-    }
-
-
-    @PreAuthorize("hasAuthority('EXPORT_VEHICULOS_DISPONIBLES')")
-    @GetMapping("/exportar/excel")
-    public ResponseEntity<Resource> exportarVehiculosExcel(
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fecha) {
-        try {
-            ByteArrayInputStream excelStream = vehiculoExportService.exportarVehiculosDisponibles(fecha);
-            byte[] excelBytes = excelStream.readAllBytes(); // Java 11+
-            // Si usas Java < 11, usa:
-            // byte[] excelBytes = excelStream.readAllBytes(); → reemplaza por:
-            // byte[] excelBytes = IOUtils.toByteArray(excelStream); (con Apache Commons IO)
-
-            ByteArrayResource resource = new ByteArrayResource(excelBytes);
-
-            return ResponseEntity.ok()
-                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=vehiculos_disponibles_" + fecha + ".xlsx")
-                    .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
-                    .contentLength(excelBytes.length)
-                    .body(resource);
-        } catch (Exception e) {
-            log.error("Error al exportar vehículos a Excel", e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-        }
-    }
 }
